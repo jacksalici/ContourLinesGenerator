@@ -29,8 +29,8 @@ class Point:
 
 
 class Points:
-    def __init__(self, points: List[Point] = []):
-        self._points = points
+    def __init__(self, points: List[Point] = None):
+        self._points = points if points is not None else []
 
     @staticmethod
     def generate(
@@ -69,19 +69,22 @@ class Points:
                 y = random.uniform(min_y, max_y)
                 z = random.uniform(min_z, max_z)
             else:
-                x = min_x + (max_x - min_x) * i / (num_points - 1)
-                y = min_y + (max_y - min_y) * i / (num_points - 1)
-                z = min_z + (max_z - min_z) * i / (num_points - 1)
+                if num_points == 1:
+                    x = (min_x + max_x) / 2
+                    y = (min_y + max_y) / 2
+                    z = (min_z + max_z) / 2
+                else:
+                    x = min_x + (max_x - min_x) * i / (num_points - 1)
+                    y = min_y + (max_y - min_y) * i / (num_points - 1)
+                    z = min_z + (max_z - min_z) * i / (num_points - 1)
             points.add(Point(x, y, z))
 
         return points
 
     def add(self, point: Point):
-        if self._points is None:
-            self._points = []
-        self._points.append(point)
-
-    def get_all(self, scale: List[int] = [1, 1, 1]) -> List[Point]:
+        self._points.append(point)  
+        
+    def get_all(self, scale: List[int] = None) -> List[Point]: 
         """ Get all points, optionally scaled.
         If 1 scale factor is provided, it is applied to both x and y, if 2, the first is x and the second y, if 3, the third is z.
         Args:
@@ -90,17 +93,22 @@ class Points:
             List[Point]: List of points.
         """
         
+        if scale is None:
+            scale = [1, 1, 1]
+        
         assert len(scale) <= 3, "Scale must be a list of at most 3 elements"
+        
+        if len(scale) == 1:
+            scale = [scale[0], scale[0], scale[0]]
+        elif len(scale) == 2:
+            scale = [scale[0], scale[1], 1]
+        elif len(scale) == 3:
+            pass  
+        else:  
+            scale = [1, 1, 1]
+        
         if scale != [1, 1, 1]:
             scaled_points = []
-            
-            if scale == []:
-                scale = [1, 1, 1]
-            elif len(scale) == 1:
-                scale = [scale[0], scale[0], scale[0]]
-            elif len(scale) == 2:
-                scale = [scale[0], scale[1], 1]
-            
             for p in self._points:
                 scaled_points.append(Point(p.x * scale[0], p.y * scale[1], p.z * scale[2]))
             return scaled_points
@@ -123,8 +131,18 @@ class Line:
     
     def getInterpolatedPoints(self, num_points: int) -> Points:
         points = Points()
+        
+        if num_points <= 0:
+            return points
+        elif num_points == 1:
+            x = (self.start.x + self.end.x) / 2
+            y = (self.start.y + self.end.y) / 2
+            z = (self.start.z + self.end.z) / 2
+            points.add(Point(x, y, z))
+            return points
+        
         for i in range(num_points):
-            t = i / (num_points - 1)
+            t = i / (num_points - 1) 
             x = self.start.x + t * (self.end.x - self.start.x)
             y = self.start.y + t * (self.end.y - self.start.y)
             z = self.start.z + t * (self.end.z - self.start.z)
@@ -153,7 +171,7 @@ if __name__ == "__main__":
     
     print("\nNumber of Points:", len(pts))
     
-    print("\n Unscaled Points:")
+
     
     scales = [[], [2], [2, 3], [2, 3, 4]]
     for scale in scales:
@@ -170,7 +188,7 @@ if __name__ == "__main__":
         test_zs = [0.0, 0.5, 1.0]
         for z in test_zs:
             pt_at_z = line.getPointAtZ(z)
-            print(f"Point at Z={z}: {pt_at_z}")
+            print(f"\nPoint at Z={z}: {pt_at_z}")
   
 
         

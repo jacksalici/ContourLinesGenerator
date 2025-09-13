@@ -12,8 +12,7 @@ HEIGHT = 400
 def draw(points: Points) -> svg.SVG:
     elements: list[svg.Element] = []
     
-    for point in points.get_all():
-        x, y, z = point.x * WIDTH, point.y * HEIGHT, point.z * MAX_RADIUS
+    for x, y, z in points.get_all(scale=[WIDTH, HEIGHT, MAX_RADIUS]):
         
         elements.append(svg.Circle(
                 cx=x, cy=y, r=z,

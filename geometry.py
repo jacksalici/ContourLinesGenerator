@@ -83,15 +83,24 @@ class Points:
 
     def get_all(self, scale: List[int] = [1, 1, 1]) -> List[Point]:
         """ Get all points, optionally scaled.
+        If 1 scale factor is provided, it is applied to both x and y, if 2, the first is x and the second y, if 3, the third is z.
         Args:
             scale (List[int], optional): Scale factors for x, y, z. Defaults to [1, 1, 1].
         Returns:
             List[Point]: List of points.
         """
         
-        assert len(scale) == 3, "Scale must be a list of 3 elements"
+        assert len(scale) <= 3, "Scale must be a list of at most 3 elements"
         if scale != [1, 1, 1]:
             scaled_points = []
+            
+            if scale is []:
+                scale = [1, 1, 1]
+            elif len(scale) == 1:
+                scale = [scale[0], scale[0], scale[0]]
+            elif len(scale) == 2:
+                scale = [scale[0], scale[1], 1]
+            
             for p in self._points:
                 scaled_points.append(Point(p.x * scale[0], p.y * scale[1], p.z * scale[2]))
             return scaled_points

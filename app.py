@@ -3,7 +3,7 @@ import svg
 from geometry import *
 from utils import *
 
-MAX_RADIUS = 10
+DEPTH = 10
 WIDTH = 400
 HEIGHT = 400
 
@@ -12,13 +12,12 @@ HEIGHT = 400
 def draw(points: Points) -> svg.SVG:
     elements: list[svg.Element] = []
     
-    for x, y, z in points.get_all(scale=[WIDTH, HEIGHT, MAX_RADIUS]):
+    for x, y, z in points.get_all(scale=[WIDTH, HEIGHT]):
         
         elements.append(svg.Circle(
-                cx=x, cy=y, r=z,
-                stroke="red",
-                fill="transparent",
-                stroke_width=2,
+                cx=x, cy=y, r=4,
+                fill="black",
+                fill_opacity=z
             ))
         
     return svg.SVG(

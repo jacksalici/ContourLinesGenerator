@@ -94,7 +94,7 @@ class Points:
         if scale != [1, 1, 1]:
             scaled_points = []
             
-            if scale is []:
+            if scale == []:
                 scale = [1, 1, 1]
             elif len(scale) == 1:
                 scale = [scale[0], scale[0], scale[0]]
@@ -113,20 +113,64 @@ class Points:
     def __repr__(self):
         return ";\n".join(str(p) for p in self._points)
 
+class Line:
+    def __init__(self, start: Point, end: Point):
+        self.start = start
+        self.end = end
+    
+    def __repr__(self):
+        return f"Line({self.start} -> {self.end})"
+    
+    def getInterpolatedPoints(self, num_points: int) -> Points:
+        points = Points()
+        for i in range(num_points):
+            t = i / (num_points - 1)
+            x = self.start.x + t * (self.end.x - self.start.x)
+            y = self.start.y + t * (self.end.y - self.start.y)
+            z = self.start.z + t * (self.end.z - self.start.z)
+            points.add(Point(x, y, z))
+        return points
+    
+    def getPointAtZ(self, z: float) -> Point | None:
+        if (z < min(self.start.z, self.end.z)) or (z > max(self.start.z, self.end.z)):
+            print("Warning: Z out of bounds")
+            return None
+        if self.start.z == self.end.z:
+            print("Warning: Line is horizontal")
+            return None  # Line is horizontal, no unique intersection point
+        
+        t = (z - self.start.z) / (self.end.z - self.start.z)
+        x = self.start.x + t * (self.end.x - self.start.x)
+        y = self.start.y + t * (self.end.y - self.start.y)
+        
+        return Point(x, y, z)
+
 
 if __name__ == "__main__":
-    pts = Points.generate(10, randomize=True)
+    pts = Points.generate(3, randomize=True)
     print("Generated Points:")
     print(pts)  # Example usage
     
     print("\nNumber of Points:", len(pts))
     
     print("\n Unscaled Points:")
-    for x, y, z in pts.get_all():
-        print(x, y, z)  # Example usage without scaling
     
-    print("\nScaled Points (400x400x10):")
-    for x, y, z in pts.get_all(scale=[400, 400, 10]):
-        print(x, y, z)  # Example usage with scaling
+    scales = [[], [2], [2, 3], [2, 3, 4]]
+    for scale in scales:
+        print(f"\nScaled Points (scale={scale}):")
+        for p in pts.get_all(scale=scale):
+            print(p)
+    
+    for line in [Line(pts.get_all()[i], pts.get_all()[i+1]) for i in range(len(pts)-1)]:
+        print(f"\nInterpolated Points for {line}:")
+        interp_pts = line.getInterpolatedPoints(5)
+        for p in interp_pts.get_all():
+            print(p)
         
+        test_zs = [0.0, 0.5, 1.0]
+        for z in test_zs:
+            pt_at_z = line.getPointAtZ(z)
+            print(f"Point at Z={z}: {pt_at_z}")
+  
+
         

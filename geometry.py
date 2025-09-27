@@ -179,10 +179,11 @@ class Points:
 
         return interpolated_points
 
-    def convex_hull(self, z = None, z_d = 0.01) -> Self:
+    def convex_hull(self, z = None, z_d = 0.01) -> List[Self]:
         """Compute the convex hull of the points (in XY plane) using Andrew's monotone chain.
         Returns:
             Points: Hull points in CCW order.
+            Remaining points: Points not in the hull.
         """
         points = sorted(self._points, key=lambda p: (p.x, p.y))
         
@@ -191,7 +192,7 @@ class Points:
         
         if len(points) <= 3:
             print("Warning: Not enough points to compute convex hull")
-            return None
+            return None, self
 
         def cross(o: Point, a: Point, b: Point) -> float:
             return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
@@ -211,7 +212,9 @@ class Points:
             upper.append(p)
 
         # Concatenate, remove duplicates
-        return Points(lower[:-1] + upper[:-1])
+        hull = Points(lower[:-1] + upper[:-1])
+        remaining = Points([p for p in points if p not in hull._points])
+        return hull, remaining
 
     def __len__(self):
         return len(self._points)

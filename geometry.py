@@ -45,6 +45,7 @@ class Points:
         max_z: float = 1,
         randomize: bool = False,
         seed: int = 42,
+        angles: bool = False,
     ) -> Self:
         """Generate a set of points.
         Args:
@@ -57,11 +58,23 @@ class Points:
             max_z (float, optional): Maximum Z coordinate. Defaults to 1.
             randomize (bool, optional): Whether to randomize the points. Defaults to False.
             seed (int, optional): Random seed. Defaults to 42.
+            angles (bool, optional): Whether to distribute points in the angles too. Defaults to False.
         Returns:
             Points: Generated points as a class.
         """
 
         points = Points()
+        
+        if angles:            
+            # Add corner points
+            points.add(Point(min_x, min_y, min_z))
+            points.add(Point(max_x, min_y, min_z))
+            points.add(Point(max_x, max_y, min_z))
+            points.add(Point(min_x, max_y, min_z))
+            
+            num_points -= 4
+        
+        
         for i in range(num_points):
             if randomize:
                 import random
@@ -165,6 +178,40 @@ class Points:
                     )
 
         return interpolated_points
+
+    def convex_hull(self, z = None, z_d = 0.01) -> Self:
+        """Compute the convex hull of the points (in XY plane) using Andrew's monotone chain.
+        Returns:
+            Points: Hull points in CCW order.
+        """
+        points = sorted(self._points, key=lambda p: (p.x, p.y))
+        
+        if z is not None:
+            points = list(filter(lambda p: abs(p.z - z) <= z_d, points))
+        
+        if len(points) <= 3:
+            print("Warning: Not enough points to compute convex hull")
+            return None
+
+        def cross(o: Point, a: Point, b: Point) -> float:
+            return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+
+        # Build lower hull
+        lower = []
+        for p in points:
+            while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+                lower.pop()
+            lower.append(p)
+
+        # Build upper hull
+        upper = []
+        for p in reversed(points):
+            while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+                upper.pop()
+            upper.append(p)
+
+        # Concatenate, remove duplicates
+        return Points(lower[:-1] + upper[:-1])
 
     def __len__(self):
         return len(self._points)

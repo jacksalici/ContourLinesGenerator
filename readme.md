@@ -1,4 +1,9 @@
+<img src="assets/favicon.png" alt="Contour logo" width="50px">
+
 # Parametric Contour Lines Generator
+### [contours.jacksalici.com](https://contours.jacksalici.com)
+
+
 
 <table>
   <tr>
@@ -82,3 +87,9 @@ A control can bind to a state `path`, or to an explicit `get`/`set` pair when th
 location — that is how the selected-point sliders reach whichever point is currently selected. Groups and
 individual controls both accept a `visible(state)` predicate.
 
+# Favicon
+
+The favicon of the website has been generated with the following configuration:
+```
+https://contours.jacksalici.com/?res=30&rad=0.12&na=0.05&nsc=5.2&sd=8&ef=1&msk=none&n=8&sm=6&sim=0.002&ml=2&pal=mono&sw=8&swr=0.2&fil=1&fo=0.1&p=0.522,0.333,1.000;0.343,0.523,1.000;0.548,0.682,1.000;0.448,0.449,0.000;0.461,0.618,0.025
+```

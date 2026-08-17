@@ -5,7 +5,7 @@
 import { Store, createDefaultState, createPoint, randomPoints } from './state.js';
 import { makeRandom } from './noise.js';
 import { buildPanel } from './controls.js';
-import { buildDocument, mount, serialize } from './renderer.js';
+import { buildDocument, mount, serialize, toPNGBlob } from './renderer.js';
 import { PointsLayer } from './points-layer.js';
 import { resetView, zoomCentre } from './viewport.js';
 import { applyQuery, stateURL } from './url.js';
@@ -77,9 +77,8 @@ function flash(message) {
     setTimeout(scheduleRender, 1500);
 }
 
-/** Trigger a browser download for generated text content. */
-function download(filename, text, mime) {
-    const blob = new Blob([text], { type: mime });
+/** Trigger a browser download for a blob. */
+function download(filename, blob) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
 
@@ -88,6 +87,11 @@ function download(filename, text, mime) {
     link.click();
 
     URL.revokeObjectURL(url);
+}
+
+/** The PNG resolution multiplier chosen in the sidebar. */
+function pngScale() {
+    return Number(document.getElementById('png-scale').value) || 1;
 }
 
 const actions = {
@@ -125,7 +129,18 @@ const actions = {
     'zoom-out': () => store.update((s) => zoomCentre(s.view, 1 / 1.25, s.canvas)),
     'zoom-reset': () => store.update((s) => resetView(s.view)),
     'export-svg': () => {
-        download('contours.svg', serialize(lastDoc), 'image/svg+xml');
+        download('contours.svg', new Blob([serialize(lastDoc)], { type: 'image/svg+xml' }));
+    },
+    'export-png': async () => {
+        const scale = pngScale();
+        flash(`Rendering PNG at ${Math.round(lastDoc.width * scale)}×${Math.round(lastDoc.height * scale)}…`);
+
+        try {
+            download('contours.png', await toPNGBlob(lastDoc, scale));
+            flash('PNG saved');
+        } catch (error) {
+            flash(`PNG export failed: ${error.message}`);
+        }
     },
     'copy-url': async () => {
         const url = stateURL(store.state);

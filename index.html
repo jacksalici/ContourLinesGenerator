@@ -122,7 +122,19 @@ svg {
     <h2>Export</h2>
     <p>
         <button data-action="export-svg">Export SVG</button>
+        <button data-action="export-png">Export PNG</button>
         <button data-action="copy-url">Copy link</button>
+    </p>
+    <p>
+        <label>
+            <span>PNG resolution</span>
+            <select id="png-scale">
+                <option value="1">1&times;</option>
+                <option value="2" selected>2&times;</option>
+                <option value="4">4&times;</option>
+                <option value="8">8&times;</option>
+            </select>
+        </label>
     </p>
     <p>Every setting lives in the URL, so the link restores this exact drawing.</p>
 

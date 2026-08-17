@@ -162,6 +162,41 @@ export function mount(svg, doc, view) {
     return art;
 }
 
+/**
+ * Rasterise a document to a PNG blob at `scale`x the canvas size.
+ *
+ * The SVG is round-tripped through an <img>, so the bitmap comes from exactly
+ * the same markup as the SVG export rather than from a second drawing path
+ * that could drift out of step with it.
+ *
+ * @returns {Promise<Blob>}
+ */
+export function toPNGBlob(doc, scale = 2) {
+    const svgBlob = new Blob([serialize(doc)], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+
+        image.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(doc.width * scale));
+            canvas.height = Math.max(1, Math.round(doc.height * scale));
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob((blob) => {
+                if (blob) resolve(blob);
+                else reject(new Error('Could not encode the PNG'));
+            }, 'image/png');
+        };
+
+        image.onerror = () => reject(new Error('Could not rasterise the SVG'));
+        image.src = url;
+    }).finally(() => URL.revokeObjectURL(url));
+}
+
 /** Serialise a computed document as a standalone SVG file. */
 export function serialize(doc) {
     const body = doc.paths

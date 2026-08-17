@@ -8,15 +8,6 @@
 
 import { createView } from './viewport.js';
 
-export const PALETTES = {
-    ink: { name: 'Ink', background: '#f5f1e8', colors: ['#1b1b1b'] },
-    topo: { name: 'Topographic', background: '#fdf6e3', colors: ['#6b4f2a', '#8a6a3b', '#a9854c', '#c6a06a'] },
-    ocean: { name: 'Ocean', background: '#06182b', colors: ['#3fa7d6', '#59c3e0', '#8ad9e8', '#c2eef5'] },
-    ember: { name: 'Ember', background: '#150c0c', colors: ['#5a1e1e', '#a33a1f', '#dd6b20', '#f2b134'] },
-    moss: { name: 'Moss', background: '#0f1a12', colors: ['#2f5d3a', '#4a8055', '#79a86f', '#b6cf9b'] },
-    mono: { name: 'Paper white', background: '#ffffff', colors: ['#2b2b2b', '#555555', '#808080'] },
-};
-
 export function createDefaultState() {
     return {
         canvas: {
@@ -45,6 +36,7 @@ export function createDefaultState() {
         style: {
             palette: 'topo',
             colorMode: 'ramp',
+            baseColor: '#2f7fd0', // used by the single-colour palette
             background: null, // null = use the palette's background
             strokeWidth: 1.4,
             strokeWidthStep: 0,

@@ -9,20 +9,10 @@
 import { buildField, contourLevels } from './field.js';
 import { traceContours } from './marching-squares.js';
 import { buildPath } from './path.js';
-import { PALETTES } from './state.js';
-import { contourColor } from './color.js';
+import { contourColor, resolveStyle } from './color.js';
 import { viewBox } from './viewport.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-
-/** Resolve the effective palette colours and background for the current state. */
-export function resolveStyle(style) {
-    const palette = PALETTES[style.palette] || PALETTES.ink;
-    return {
-        colors: palette.colors,
-        background: style.background || palette.background,
-    };
-}
 
 /**
  * Compute the full drawing.
@@ -68,7 +58,7 @@ export function buildDocument(state) {
             paths.push({
                 d,
                 stroke: color,
-                strokeWidth: Math.max(0.1, strokeWidth),
+                strokeWidth: Math.max(0.0, strokeWidth),
                 fill: style.fill && line.closed ? color : 'none',
                 fillOpacity: style.fill && line.closed ? style.fillOpacity : 0,
                 level: contour.level,

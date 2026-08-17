@@ -2,12 +2,13 @@
  * App wiring: store -> render loop -> DOM.
  */
 
-import { Store, createDefaultState, randomPoints } from './state.js';
+import { Store, createDefaultState, createPoint, randomPoints } from './state.js';
 import { makeRandom } from './noise.js';
 import { buildPanel } from './controls.js';
 import { buildDocument, mount, serialize } from './renderer.js';
 import { PointsLayer } from './points-layer.js';
 import { resetView, zoomCentre } from './viewport.js';
+import { applyQuery, stateURL } from './url.js';
 
 const svg = document.getElementById('stage');
 const panel = document.getElementById('panel');
@@ -16,7 +17,10 @@ const stats = document.getElementById('stats');
 const store = new Store(createDefaultState());
 const pointsLayer = new PointsLayer(svg, store);
 
-store.state.points = randomPoints(9, makeRandom(store.state.field.seed));
+// The URL is the save format; fall back to a random scatter for a first visit.
+if (!applyQuery(store.state, location.search, createPoint)) {
+    store.state.points = randomPoints(9, makeRandom(store.state.field.seed));
+}
 
 /** Render is throttled to one pass per frame; state can change as fast as it likes. */
 let frame = null;
@@ -48,7 +52,30 @@ function render() {
 
 store.subscribe(scheduleRender);
 
+/**
+ * Mirror state into the address bar, well after the last edit.
+ *
+ * Encoding is cheap, but history.replaceState is not something to do on every
+ * frame of a slider drag, so it is debounced rather than tied to the render.
+ */
+let urlTimer = null;
+
+function scheduleURLSync() {
+    clearTimeout(urlTimer);
+    urlTimer = setTimeout(() => {
+        history.replaceState(null, '', stateURL(store.state));
+    }, 400);
+}
+
+store.subscribe(scheduleURLSync);
+
 buildPanel(panel, store);
+
+/** Briefly replace the stats line with a message. */
+function flash(message) {
+    stats.textContent = message;
+    setTimeout(scheduleRender, 1500);
+}
 
 /** Trigger a browser download for generated text content. */
 function download(filename, text, mime) {
@@ -100,12 +127,17 @@ const actions = {
     'export-svg': () => {
         download('contours.svg', serialize(lastDoc), 'image/svg+xml');
     },
-    'export-json': () => {
-        const { points, canvas, field, contours, style } = store.state;
-        download('contours.json', JSON.stringify({ points, canvas, field, contours, style }, null, 2), 'application/json');
-    },
-    'import-json': () => {
-        document.getElementById('file-input').click();
+    'copy-url': async () => {
+        const url = stateURL(store.state);
+        history.replaceState(null, '', url);
+
+        try {
+            await navigator.clipboard.writeText(url);
+            flash('Link copied to clipboard');
+        } catch {
+            // Clipboard access can be refused; the address bar still has it.
+            flash('Link is in the address bar — copy it from there');
+        }
     },
 };
 
@@ -113,21 +145,5 @@ for (const [action, handler] of Object.entries(actions)) {
     const button = document.querySelector(`[data-action="${action}"]`);
     if (button) button.addEventListener('click', handler);
 }
-
-document.getElementById('file-input').addEventListener('change', async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    try {
-        const parsed = JSON.parse(await file.text());
-        store.update((s) => {
-            Object.assign(s, createDefaultState(), parsed);
-        });
-    } catch (error) {
-        stats.textContent = `Could not read that file: ${error.message}`;
-    }
-
-    event.target.value = '';
-});
 
 render();

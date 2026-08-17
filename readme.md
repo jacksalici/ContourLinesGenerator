@@ -1,19 +1,7 @@
-# Curve Generator
+# Parametric Contour Lines Generator
 ![example](https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Contour2D.svg/1024px-Contour2D.svg.png)
 
 The purpose of this project is to generate **parametric [contour lines](https://en.wikipedia.org/wiki/Contour_line)** and export them as beautiful SVGs.
-
-What do I intend as parametric? Basically the curves will be generated from a set of points or functions.
-
-## Running
-
-No build step, no dependencies. Serve the folder (ES modules need HTTP, `file://` will not work):
-
-```bash
-python3 -m http.server 8000
-```
-
-Then open <http://localhost:8000>.
 
 ## How it works
 
@@ -32,7 +20,8 @@ control points  →  scalar field  →  marching squares  →  stitching  →  s
 | [field.js](js/field.js) | Interpolates control points into a height grid; border masks |
 | [marching-squares.js](js/marching-squares.js) | Extracts one level set as stitched polylines |
 | [path.js](js/path.js) | Simplification, Chaikin smoothing, SVG path data |
-| [color.js](js/color.js) | Palette sampling (elevation ramp / cycle / single) |
+| [color.js](js/color.js) | Palettes and sampling (elevation ramp / cycle / single) |
+| [url.js](js/url.js) | State <-> query string; the URL is the save format |
 | [renderer.js](js/renderer.js) | State → drawing; mounts to DOM and serialises to file |
 | [state.js](js/state.js) | State shape, palettes, tiny observable store |
 | [controls.js](js/controls.js) | Control panel, generated from a declarative schema |
@@ -50,22 +39,12 @@ Two details worth knowing:
 - **Border mask.** The field is faded to zero near the frame so contours close into islands instead of
   being clipped. `radial` gives an oval landmass, `frame` gives rings parallel to the border, `none`
   lets lines run off the edge.
+- **Palettes.** *Topographic* and *Paper white* are fixed lists; *Rainbow* and *Single colour* are
+  generated (hue wheel, and lightness steps of a picked colour). A palette supplies either `colors` or a
+  `build(style)` function, so adding a generated one takes a single entry in `PALETTES`.
 
-## Editing
-
-- **Click** empty canvas to add a point; **click** a point to select it
-- **Drag** a point to move it, **Shift+drag** or **scroll** over it to change its height
-- **Alt+click** or **right click** a point to delete it
-- A selected point also gets X / Y / Height sliders at the top of the sidebar
-- **Save/Load preset** round-trips the whole parameter set as JSON
-
-Control points are stored in normalised `[0,1]` coordinates, so changing the canvas size never moves them.
-
-## Navigating
-
-**Scroll** to zoom about the cursor, **drag** empty canvas to pan, or use the zoom buttons. Zoom is applied
-through the SVG `viewBox`, so it is purely a view concern: coordinates stay in canvas space and the
-exported SVG always covers the full canvas whatever you are looking at.
+By default colour is a continuous **ramp** across the palette, so it encodes elevation. *Cycle* repeats
+the palette per line and *single* uses one colour throughout.
 
 ## Adding a parameter
 
@@ -75,9 +54,3 @@ Add the field to `createDefaultState()` in [state.js](js/state.js), then one ent
 A control can bind to a state `path`, or to an explicit `get`/`set` pair when the target is not a fixed
 location — that is how the selected-point sliders reach whichever point is currently selected. Groups and
 individual controls both accept a `visible(state)` predicate.
-
-## Legacy
-
-The original Python prototype (`app.py`, `geometry.py`, `canvas.py`) took the *convex hull* of the points
-at each height, which cannot produce real contour lines — they are almost never convex. Marching squares
-replaces it.

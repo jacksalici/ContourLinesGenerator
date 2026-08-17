@@ -7,8 +7,8 @@
  */
 
 import { INTERPOLATION_METHODS, MASK_SHAPES } from './field.js';
-import { COLOR_MODES } from './color.js';
-import { PALETTES, selectedPoint } from './state.js';
+import { COLOR_MODES, PALETTES } from './color.js';
+import { selectedPoint } from './state.js';
 
 function getPath(obj, path) {
     return path.split('.').reduce((acc, key) => acc[key], obj);
@@ -125,10 +125,14 @@ export const SCHEMA = [
                 options: Object.entries(PALETTES).map(([value, p]) => ({ value, label: p.name })),
             },
             {
+                type: 'color', path: 'style.baseColor', label: 'Base colour',
+                visible: (s) => s.style.palette === 'custom',
+            },
+            {
                 type: 'select', path: 'style.colorMode', label: 'Colour mode',
                 options: Object.entries(COLOR_MODES).map(([value, label]) => ({ value, label })),
             },
-            { type: 'range', path: 'style.strokeWidth', label: 'Stroke width', min: 0.1, max: 8, step: 0.1 },
+            { type: 'range', path: 'style.strokeWidth', label: 'Stroke width', min: 0.0, max: 8, step: 0.1 },
             { type: 'range', path: 'style.strokeWidthStep', label: 'Width ramp', min: -0.2, max: 0.2, step: 0.005 },
             { type: 'checkbox', path: 'style.fill', label: 'Fill closed shapes' },
             {

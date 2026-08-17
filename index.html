@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curve Generator — Contour Lines</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <aside class="panel-wrap">
+        <header class="brand">
+            <h1>Curve Generator</h1>
+            <p>Parametric contour lines → SVG</p>
+        </header>
+
+        <div class="actions">
+            <button data-action="random-points">Randomise</button>
+            <button data-action="add-point">Add point</button>
+            <button data-action="clear-points">Clear</button>
+            <button data-action="reset">Reset</button>
+        </div>
+
+        <div id="panel" class="panel"></div>
+
+        <div class="actions actions--export">
+            <button data-action="export-svg" class="primary">Export SVG</button>
+            <button data-action="export-json">Save preset</button>
+            <button data-action="import-json">Load preset</button>
+            <input type="file" id="file-input" accept="application/json" hidden>
+        </div>
+
+        <footer class="hints">
+            <p><strong>Click</strong> empty canvas to add a point</p>
+            <p><strong>Drag</strong> to move · <strong>Shift+drag</strong> or <strong>scroll</strong> to change height</p>
+            <p><strong>Alt+click</strong> or <strong>right click</strong> to delete</p>
+        </footer>
+    </aside>
+
+    <main class="stage-wrap">
+        <div class="stage">
+            <canvas id="field-preview" class="field-preview" hidden></canvas>
+            <svg id="stage" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+        <p id="stats" class="stats"></p>
+    </main>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -28,15 +28,19 @@ control points  →  scalar field  →  marching squares  →  stitching  →  s
 
 | Module | Responsibility |
 | --- | --- |
-| [noise.js](web/js/noise.js) | Seeded value noise and fBm, for natural-looking terrain |
-| [field.js](web/js/field.js) | Interpolates control points into a height grid; border masks |
-| [marching-squares.js](web/js/marching-squares.js) | Extracts one level set as stitched polylines |
-| [path.js](web/js/path.js) | Simplification, Chaikin smoothing, SVG path data |
-| [color.js](web/js/color.js) | Palette sampling (elevation ramp / cycle / single) |
-| [renderer.js](web/js/renderer.js) | State → drawing; mounts to DOM and serialises to file |
-| [state.js](web/js/state.js) | State shape, palettes, tiny observable store |
-| [controls.js](web/js/controls.js) | Control panel, generated from a declarative schema |
-| [points-layer.js](web/js/points-layer.js) | Interactive control-point handles |
+| [noise.js](js/noise.js) | Seeded value noise and fBm, for natural-looking terrain |
+| [field.js](js/field.js) | Interpolates control points into a height grid; border masks |
+| [marching-squares.js](js/marching-squares.js) | Extracts one level set as stitched polylines |
+| [path.js](js/path.js) | Simplification, Chaikin smoothing, SVG path data |
+| [color.js](js/color.js) | Palette sampling (elevation ramp / cycle / single) |
+| [renderer.js](js/renderer.js) | State → drawing; mounts to DOM and serialises to file |
+| [state.js](js/state.js) | State shape, palettes, tiny observable store |
+| [controls.js](js/controls.js) | Control panel, generated from a declarative schema |
+| [points-layer.js](js/points-layer.js) | Interactive control-point handles, selection, zoom/pan input |
+| [viewport.js](js/viewport.js) | Zoom and pan, applied through the SVG viewBox |
+| [main.js](js/main.js) | Wiring: store → render loop → DOM |
+
+The page has no stylesheet: the handful of rules it needs are inlined in [index.html](index.html).
 
 Two details worth knowing:
 
@@ -49,20 +53,31 @@ Two details worth knowing:
 
 ## Editing
 
-- **Click** empty canvas to add a point
-- **Drag** to move, **Shift+drag** or **scroll** over a handle to change its height
-- **Alt+click** or **right click** to delete
+- **Click** empty canvas to add a point; **click** a point to select it
+- **Drag** a point to move it, **Shift+drag** or **scroll** over it to change its height
+- **Alt+click** or **right click** a point to delete it
+- A selected point also gets X / Y / Height sliders at the top of the sidebar
 - **Save/Load preset** round-trips the whole parameter set as JSON
 
 Control points are stored in normalised `[0,1]` coordinates, so changing the canvas size never moves them.
 
+## Navigating
+
+**Scroll** to zoom about the cursor, **drag** empty canvas to pan, or use the zoom buttons. Zoom is applied
+through the SVG `viewBox`, so it is purely a view concern: coordinates stay in canvas space and the
+exported SVG always covers the full canvas whatever you are looking at.
+
 ## Adding a parameter
 
-Add the field to `createDefaultState()` in [state.js](web/js/state.js), then one entry to `SCHEMA` in
-[controls.js](web/js/controls.js) with its `path`. The panel and the render loop pick it up automatically.
+Add the field to `createDefaultState()` in [state.js](js/state.js), then one entry to `SCHEMA` in
+[controls.js](js/controls.js) with its `path`. The panel and the render loop pick it up automatically.
+
+A control can bind to a state `path`, or to an explicit `get`/`set` pair when the target is not a fixed
+location — that is how the selected-point sliders reach whichever point is currently selected. Groups and
+individual controls both accept a `visible(state)` predicate.
 
 ## Legacy
 
-`app.py`, `geometry.py` and `canvas.py` are the original Python prototype. Note that its contour step
-took the *convex hull* of the points at each height, which cannot produce real contour lines — they are
-almost never convex. The web app replaces that with marching squares.
+The original Python prototype (`app.py`, `geometry.py`, `canvas.py`) took the *convex hull* of the points
+at each height, which cannot produce real contour lines — they are almost never convex. Marching squares
+replaces it.

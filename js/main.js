@@ -5,11 +5,11 @@
 import { Store, createDefaultState, randomPoints } from './state.js';
 import { makeRandom } from './noise.js';
 import { buildPanel } from './controls.js';
-import { buildDocument, mount, serialize, renderFieldPreview } from './renderer.js';
+import { buildDocument, mount, serialize } from './renderer.js';
 import { PointsLayer } from './points-layer.js';
+import { resetView, zoomCentre } from './viewport.js';
 
 const svg = document.getElementById('stage');
-const fieldCanvas = document.getElementById('field-preview');
 const panel = document.getElementById('panel');
 const stats = document.getElementById('stats');
 
@@ -36,21 +36,14 @@ function render() {
     const doc = buildDocument(store.state);
     lastDoc = doc;
 
-    mount(svg, doc);
+    mount(svg, doc, store.state.view);
     pointsLayer.render(doc);
     svg.appendChild(pointsLayer.group); // keep handles above the artwork
 
-    if (store.state.ui.showField) {
-        renderFieldPreview(fieldCanvas, doc.field);
-        fieldCanvas.hidden = false;
-    } else {
-        fieldCanvas.hidden = true;
-    }
-
-    document.body.style.setProperty('--stage-bg', doc.background);
-
     const elapsed = performance.now() - started;
-    stats.textContent = `${store.state.points.length} points · ${doc.paths.length} paths · ${elapsed.toFixed(0)} ms`;
+    const zoom = store.state.view.scale;
+    stats.textContent = `${store.state.points.length} points · ${doc.paths.length} paths `
+        + `· ${zoom.toFixed(2)}× · ${elapsed.toFixed(0)} ms`;
 }
 
 store.subscribe(scheduleRender);
@@ -78,14 +71,22 @@ const actions = {
                 Math.max(3, s.points.length || 9),
                 makeRandom(s.field.seed),
             );
+            s.ui.selectedId = null;
         });
     },
     'add-point': () => {
         const random = makeRandom(Date.now() & 0xffff);
-        store.update((s) => s.points.push(...randomPoints(1, random)));
+        store.update((s) => {
+            const [point] = randomPoints(1, random);
+            s.points.push(point);
+            s.ui.selectedId = point.id;
+        });
     },
     'clear-points': () => {
-        store.update((s) => { s.points = []; });
+        store.update((s) => {
+            s.points = [];
+            s.ui.selectedId = null;
+        });
     },
     'reset': () => {
         store.update((s) => {
@@ -93,6 +94,9 @@ const actions = {
             s.points = randomPoints(9, makeRandom(s.field.seed));
         });
     },
+    'zoom-in': () => store.update((s) => zoomCentre(s.view, 1.25, s.canvas)),
+    'zoom-out': () => store.update((s) => zoomCentre(s.view, 1 / 1.25, s.canvas)),
+    'zoom-reset': () => store.update((s) => resetView(s.view)),
     'export-svg': () => {
         download('contours.svg', serialize(lastDoc), 'image/svg+xml');
     },

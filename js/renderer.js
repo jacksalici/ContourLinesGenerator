@@ -11,6 +11,7 @@ import { traceContours } from './marching-squares.js';
 import { buildPath } from './path.js';
 import { PALETTES } from './state.js';
 import { contourColor } from './color.js';
+import { viewBox } from './viewport.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -76,7 +77,43 @@ export function buildDocument(state) {
         }
     }
 
-    return { width: canvas.width, height: canvas.height, background, field, paths };
+    return {
+        width: canvas.width,
+        height: canvas.height,
+        background,
+        field,
+        paths,
+        fieldImage: state.ui.showField ? fieldImageURL(field) : null,
+    };
+}
+
+/**
+ * Render the height field to an off-screen canvas and return it as a data URL,
+ * so the preview lives inside the SVG and zooms with the artwork.
+ */
+const previewCanvas = typeof document === 'undefined' ? null : document.createElement('canvas');
+
+function fieldImageURL(field) {
+    if (!previewCanvas) return null;
+
+    const { cols, rows } = field;
+    previewCanvas.width = cols;
+    previewCanvas.height = rows;
+
+    const ctx = previewCanvas.getContext('2d');
+    const image = ctx.createImageData(cols, rows);
+    const span = field.max - field.min || 1;
+
+    for (let i = 0; i < cols * rows; i++) {
+        const v = Math.round(((field.data[i] - field.min) / span) * 255);
+        image.data[i * 4] = v;
+        image.data[i * 4 + 1] = v;
+        image.data[i * 4 + 2] = v;
+        image.data[i * 4 + 3] = 255;
+    }
+
+    ctx.putImageData(image, 0, 0);
+    return previewCanvas.toDataURL();
 }
 
 /** Create an SVG element with attributes in one call. */
@@ -93,8 +130,9 @@ function el(tag, attrs) {
  * Only the artwork layer is written here; the interactive point handles live in
  * a sibling layer so they never leak into the export.
  */
-export function mount(svg, doc) {
-    svg.setAttribute('viewBox', `0 0 ${doc.width} ${doc.height}`);
+export function mount(svg, doc, view) {
+    const box = viewBox(view, doc);
+    svg.setAttribute('viewBox', `${box.x} ${box.y} ${box.width} ${box.height}`);
     svg.setAttribute('width', doc.width);
     svg.setAttribute('height', doc.height);
 
@@ -108,6 +146,15 @@ export function mount(svg, doc) {
     art.appendChild(el('rect', {
         x: 0, y: 0, width: doc.width, height: doc.height, fill: doc.background,
     }));
+
+    if (doc.fieldImage) {
+        art.appendChild(el('image', {
+            href: doc.fieldImage,
+            x: 0, y: 0, width: doc.width, height: doc.height,
+            preserveAspectRatio: 'none',
+            opacity: 0.85,
+        }));
+    }
 
     const lines = el('g', { fill: 'none', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
 
@@ -144,26 +191,4 @@ ${body}
   </g>
 </svg>
 `;
-}
-
-/** Render the raw height field to a canvas, as a debugging/preview underlay. */
-export function renderFieldPreview(canvasEl, field) {
-    const { cols, rows } = field;
-    canvasEl.width = cols;
-    canvasEl.height = rows;
-
-    const ctx = canvasEl.getContext('2d');
-    const image = ctx.createImageData(cols, rows);
-    const span = field.max - field.min || 1;
-
-    for (let i = 0; i < cols * rows; i++) {
-        const t = (field.data[i] - field.min) / span;
-        const v = Math.round(t * 255);
-        image.data[i * 4] = v;
-        image.data[i * 4 + 1] = v;
-        image.data[i * 4 + 2] = v;
-        image.data[i * 4 + 3] = 255;
-    }
-
-    ctx.putImageData(image, 0, 0);
 }

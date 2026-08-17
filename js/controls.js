@@ -1,13 +1,14 @@
 /**
  * Declarative control panel.
  *
- * Controls are described as data and bound to state paths, so adding a new
- * parameter is one entry in the schema — no bespoke DOM or wiring per input.
+ * Controls are described as data and bound to the store either by a state path
+ * or by an explicit get/set pair, so adding a parameter is one schema entry —
+ * no bespoke DOM or wiring per input.
  */
 
 import { INTERPOLATION_METHODS, MASK_SHAPES } from './field.js';
 import { COLOR_MODES } from './color.js';
-import { PALETTES } from './state.js';
+import { PALETTES, selectedPoint } from './state.js';
 
 function getPath(obj, path) {
     return path.split('.').reduce((acc, key) => acc[key], obj);
@@ -16,12 +17,54 @@ function getPath(obj, path) {
 function setPath(obj, path, value) {
     const keys = path.split('.');
     const last = keys.pop();
-    const target = keys.reduce((acc, key) => acc[key], obj);
-    target[last] = value;
+    keys.reduce((acc, key) => acc[key], obj)[last] = value;
 }
 
-/** @type {Array<{title: string, items: Array<object>}>} */
+/** Read/write pair for one control, from either `path` or explicit accessors. */
+function accessor(item) {
+    if (item.path) {
+        return {
+            get: (state) => getPath(state, item.path),
+            set: (state, value) => setPath(state, item.path, value),
+        };
+    }
+    return { get: item.get, set: item.set };
+}
+
+/** Slider bound to a field of the currently selected point. */
+function pointControl(label, key, { min = 0, max = 1, step = 0.005 } = {}) {
+    return {
+        type: 'range',
+        label,
+        min,
+        max,
+        step,
+        get: (state) => selectedPoint(state)?.[key] ?? 0,
+        set: (state, value) => {
+            const point = selectedPoint(state);
+            if (point) point[key] = value;
+        },
+    };
+}
+
 export const SCHEMA = [
+    {
+        title: 'Selected point',
+        visible: (state) => selectedPoint(state) !== null,
+        items: [
+            pointControl('X', 'x'),
+            pointControl('Y', 'y'),
+            pointControl('Height', 'z'),
+            {
+                type: 'button',
+                label: 'Delete point',
+                onClick: (state) => {
+                    state.points = state.points.filter((p) => p.id !== state.ui.selectedId);
+                    state.ui.selectedId = null;
+                },
+            },
+        ],
+    },
     {
         title: 'Canvas',
         items: [
@@ -103,17 +146,21 @@ export const SCHEMA = [
     },
 ];
 
-/** Build one labelled input bound to a state path. */
+const INPUT_TYPE = { range: 'range', number: 'number', checkbox: 'checkbox', color: 'color' };
+
+/** Build one labelled input bound to the store. */
 function buildControl(item, store) {
+    if (item.type === 'button') {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = item.label;
+        button.addEventListener('click', () => store.update(item.onClick));
+        return { row: button, read: () => {}, item };
+    }
+
     const row = document.createElement('label');
-    row.className = `control control--${item.type}`;
-
     const caption = document.createElement('span');
-    caption.className = 'control__label';
     caption.textContent = item.label;
-
-    const value = document.createElement('span');
-    value.className = 'control__value';
 
     let input;
 
@@ -127,76 +174,73 @@ function buildControl(item, store) {
         }
     } else {
         input = document.createElement('input');
-        input.type = item.type === 'checkbox' ? 'checkbox' : (item.type === 'color' ? 'color' : (item.type === 'range' ? 'range' : 'number'));
+        input.type = INPUT_TYPE[item.type] || 'number';
         if (item.min !== undefined) input.min = item.min;
         if (item.max !== undefined) input.max = item.max;
         if (item.step !== undefined) input.step = item.step;
     }
 
-    input.className = 'control__input';
+    const { get, set } = accessor(item);
+
+    // Only ranges get a readout; the others already show their value.
+    const output = item.type === 'range' ? document.createElement('output') : null;
 
     const read = () => {
-        const current = getPath(store.state, item.path);
-        if (item.type === 'checkbox') {
-            input.checked = Boolean(current);
-        } else {
-            input.value = current;
-        }
-        value.textContent = item.type === 'range' ? String(current) : '';
+        const current = get(store.state);
+        if (item.type === 'checkbox') input.checked = Boolean(current);
+        else input.value = current;
+        if (output) output.textContent = Number(current).toFixed(item.step < 0.01 ? 4 : 2).replace(/\.?0+$/, '');
     };
 
-    const write = () => {
+    input.addEventListener('input', () => {
         let next;
-        if (item.type === 'checkbox') {
-            next = input.checked;
-        } else if (item.type === 'select' || item.type === 'color') {
-            next = input.value;
-        } else {
+        if (item.type === 'checkbox') next = input.checked;
+        else if (item.type === 'select' || item.type === 'color') next = input.value;
+        else {
             next = parseFloat(input.value);
             if (Number.isNaN(next)) return;
         }
+        store.update((state) => set(state, next));
+    });
 
-        store.update((s) => setPath(s, item.path, next));
-    };
-
-    input.addEventListener('input', write);
     read();
-
-    row.append(caption, input, value);
+    row.append(caption, input);
+    if (output) row.append(output);
 
     return { row, read, item };
 }
 
-/**
- * Render the whole panel and keep it in sync with the store.
- *
- * @returns {() => void} refresh function
- */
+/** Render the panel and keep it in sync with the store. */
 export function buildPanel(container, store) {
-    const bound = [];
+    const sections = [];
 
     for (const group of SCHEMA) {
         const section = document.createElement('section');
-        section.className = 'panel__group';
-
         const heading = document.createElement('h2');
         heading.textContent = group.title;
         section.appendChild(heading);
 
-        for (const item of group.items) {
+        const controls = group.items.map((item) => {
             const control = buildControl(item, store);
             section.appendChild(control.row);
-            bound.push(control);
-        }
+            return control;
+        });
 
         container.appendChild(section);
+        sections.push({ group, section, controls });
     }
 
     const refresh = () => {
-        for (const { row, read, item } of bound) {
-            const visible = item.visible ? item.visible(store.state) : true;
-            row.hidden = !visible;
-            if (visible) read();
+        for (const { group, section, controls } of sections) {
+            const groupVisible = group.visible ? group.visible(store.state) : true;
+            section.hidden = !groupVisible;
+            if (!groupVisible) continue;
+
+            for (const { row, read, item } of controls) {
+                const visible = item.visible ? item.visible(store.state) : true;
+                row.hidden = !visible;
+                if (visible) read();
+            }
         }
     };
 

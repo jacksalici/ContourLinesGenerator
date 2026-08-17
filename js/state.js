@@ -6,6 +6,8 @@
  * mutate a value and call `emit`.
  */
 
+import { createView } from './viewport.js';
+
 export const PALETTES = {
     ink: { name: 'Ink', background: '#f5f1e8', colors: ['#1b1b1b'] },
     topo: { name: 'Topographic', background: '#fdf6e3', colors: ['#6b4f2a', '#8a6a3b', '#a9854c', '#c6a06a'] },
@@ -51,11 +53,19 @@ export function createDefaultState() {
             precision: 2,
         },
         points: [],
+        view: createView(),
         ui: {
             showPoints: true,
             showField: false,
+            selectedId: null,
         },
     };
+}
+
+/** The currently selected control point, or null. */
+export function selectedPoint(state) {
+    if (state.ui.selectedId === null) return null;
+    return state.points.find((p) => p.id === state.ui.selectedId) || null;
 }
 
 /** Minimal observable wrapper so the UI and renderer stay decoupled. */

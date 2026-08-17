@@ -3,8 +3,6 @@ import svg
 from geometry import *
 from canvas import *
 
-DEPTH = 10
-
 if __name__ == '__main__':
     
     points: Points = Points.generate(20, randomize=True, seed=1, min_z=0.2, min_x=0.05, min_y=0.05, max_x=0.95, max_y=0.95, angles=True)
@@ -18,28 +16,38 @@ if __name__ == '__main__':
                 fill_opacity=z
             ))
         
-            
-    points_interpolated = points.interpolate_surface(grid_size=50)
-        
-    colors = ["red", "green", "blue", "orange", "purple", "cyan"]
-    i = 0
-    p = {}
-    while len(points_interpolated) > 3:
+   
+    lines = [Line(points.get_all(scale=canvas.size)[i], points.get_all(scale=canvas.size)[i + 1]) for i in range(len(points) - 1)]
     
-        for z in range(0, 10):
-            p[z], points_interpolated = points_interpolated.convex_hull(z/10, 0.5)
-            print(f"Convex hull at z={z/10} has {len(p[z]) if p[z] is not None else 0} points, remaining points: {len(points_interpolated)}")
-        
-        
-        for z, hull in p.items():
-            if hull is None or len(hull) < 3:
-                continue
+    points_at_z = {}
+    z_range = 20
+    
+    for line in lines:
+        for z in range(z_range):
+            z_val = z / z_range
+            if z not in points_at_z:
+                points_at_z[z] = []
+                
+            points_at_z[z] += line.getPointAtZ(z_val) or []
+            print(f"At z={z_val}, line {line} has points: {line.getPointAtZ(z_val)}")
+
+    colors = ["red", "green", "blue", "orange", "purple"]
+    i = 0
+
+    for z, pts in points_at_z.items():
+        if len(pts) >= 3:
+            print(f"At z={z}, found {len(pts)} points")
+            p = Points(pts)
             
+            print(p)
+            hull = p.convex_hull()
+      
             points_flattened = []
             for x, y, _ in hull.get_all(scale=canvas.size):
                 points_flattened.append(x)
                 points_flattened.append(y)
-            
+                
+                
             canvas.add(svg.Polygon(
                 points=points_flattened,
                 stroke=colors[i],

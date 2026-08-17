@@ -133,7 +133,7 @@ class Points:
         return self._points
 
     def interpolate_surface(
-        self, grid_size: int = 10, method: str = "linear"
+        self, grid_size: int = 10, method: str = "linear", show = True
     ) -> Self:
         """Interpolate the points to create a surface grid.
 
@@ -168,6 +168,23 @@ class Points:
         )
 
         grid_z = griddata(pts, vals, (grid_x, grid_y), method=method)
+        
+        if show:
+            import matplotlib.pyplot as plt
+            from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection="3d")
+            ax.scatter(pts[:, 0], pts[:, 1], vals, c='r', marker='o', label='Original Points')
+            ax.plot_surface(grid_x, grid_y, grid_z, cmap='viridis', alpha=0.6)
+            ax.set_xlabel('X')
+            ax.set_ylabel('Y')
+            ax.set_zlabel('Z')
+            plt.title('Surface Interpolation')
+            plt.legend()
+            plt.show()
+        
+        
 
         interpolated_points = Points()
         for i in range(grid_size):

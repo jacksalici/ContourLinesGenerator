@@ -2,7 +2,7 @@
  * App wiring: store -> render loop -> DOM.
  */
 
-import { Store, createDefaultState, createPoint, randomPoints } from './state.js';
+import { Store, createDefaultState, createPoint, randomPoints, randomizeConfig } from './state.js';
 import { makeRandom } from './noise.js';
 import { buildPanel } from './controls.js';
 import { buildDocument, mount, serialize, toPNGBlob } from './renderer.js';
@@ -17,9 +17,15 @@ const stats = document.getElementById('stats');
 const store = new Store(createDefaultState());
 const pointsLayer = new PointsLayer(svg, store);
 
-// The URL is the save format; fall back to a random scatter for a first visit.
+/** A fresh entropy source, so every reload differs. */
+function newRandom() {
+    return makeRandom(Math.floor(Math.random() * 1e9));
+}
+
+// A link carries an exact drawing, so it always wins. Without one there is
+// nothing to restore, so start from a new random drawing on every reload.
 if (!applyQuery(store.state, location.search, createPoint)) {
-    store.state.points = randomPoints(9, makeRandom(store.state.field.seed));
+    randomizeConfig(store.state, newRandom());
 }
 
 /** Render is throttled to one pass per frame; state can change as fast as it likes. */
@@ -95,7 +101,12 @@ function pngScale() {
 }
 
 const actions = {
-    'random-points': () => {
+    // Everything: the same shuffle a fresh page load performs.
+    'randomize-all': () => {
+        store.update((s) => randomizeConfig(s, newRandom()));
+    },
+    // Just the terrain: new points at the same count, keeping the current look.
+    'randomize-points': () => {
         store.update((s) => {
             s.field.seed = Math.floor(Math.random() * 10000);
             s.points = randomPoints(
@@ -117,12 +128,6 @@ const actions = {
         store.update((s) => {
             s.points = [];
             s.ui.selectedId = null;
-        });
-    },
-    'reset': () => {
-        store.update((s) => {
-            Object.assign(s, createDefaultState());
-            s.points = randomPoints(9, makeRandom(s.field.seed));
         });
     },
     'zoom-in': () => store.update((s) => zoomCentre(s.view, 1.25, s.canvas)),

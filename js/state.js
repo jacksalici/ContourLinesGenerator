@@ -7,6 +7,7 @@
  */
 
 import { createView } from './viewport.js';
+import { PALETTES, hslToHex } from './color.js';
 
 export function createDefaultState() {
     return {
@@ -103,4 +104,50 @@ export function randomPoints(count, random, inset = 0.08) {
     }
 
     return points;
+}
+
+/**
+ * Randomise the whole look of a drawing, in place.
+ *
+ * The ranges are deliberately narrower than the sliders allow: every draw
+ * should be a plausible piece of terrain, so this explores the space that
+ * looks good rather than the space that is merely valid. Options are weighted
+ * by repeating them in the pick lists.
+ *
+ * Canvas size and grid resolution are left alone — they are decisions about
+ * the output, not about how the drawing looks.
+ */
+export function randomizeConfig(state, random) {
+    const pick = (options) => options[Math.floor(random() * options.length)];
+    const range = (min, max) => min + random() * (max - min);
+
+    state.field.seed = Math.floor(random() * 10000);
+    state.field.method = pick(['bumps', 'bumps', 'bumps', 'gaussian', 'idw']);
+    state.field.radius = range(0.1, 0.28);
+    state.field.power = range(1.5, 4);
+    state.field.maskShape = pick(['radial', 'radial', 'radial', 'frame', 'none']);
+    state.field.edgeFalloff = range(0.25, 0.7);
+    state.field.noiseAmount = range(0.15, 0.6);
+    state.field.noiseScale = range(1.5, 5);
+    state.field.noiseOctaves = Math.round(range(3, 6));
+
+    state.contours.count = Math.round(range(12, 45));
+    state.contours.smoothing = Math.round(range(2, 4));
+
+    state.style.palette = pick(Object.keys(PALETTES));
+    state.style.colorMode = pick(['ramp', 'ramp', 'ramp', 'cycle']);
+    state.style.baseColor = hslToHex(random() * 360, range(0.45, 0.75), range(0.35, 0.5));
+    state.style.strokeWidth = range(0.8, 2.2);
+    state.style.fill = random() < 0.25;
+
+    // Nested contours stack, so N fills at opacity a read as 1-(1-a)^N. Solve
+    // back from the total we actually want, or a busy drawing turns into an
+    // opaque blob with the line work buried under it.
+    const totalFill = range(0.35, 0.6);
+    state.style.fillOpacity = 1 - Math.pow(1 - totalFill, 1 / state.contours.count);
+
+    state.points = randomPoints(Math.round(range(5, 14)), random);
+    state.ui.selectedId = null;
+
+    return state;
 }

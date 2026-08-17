@@ -77,6 +77,9 @@ Contour lines are [level sets](https://en.wikipedia.org/wiki/Level_set) of a con
 | [viewport.js](js/viewport.js) | Zoom and pan, applied through the SVG viewBox |
 | [main.js](js/main.js) | Wiring: store → render loop → DOM |
 
+Opening the page without a link gives a fresh random drawing every time (`randomizeConfig` in
+[state.js](js/state.js)). A link always takes precedence, so a shared URL still restores its exact drawing.
+
 
 ## Adding a parameter
 

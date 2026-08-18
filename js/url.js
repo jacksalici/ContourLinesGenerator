@@ -29,6 +29,8 @@ const PARAMS = [
     { key: 'na', path: 'field.noiseAmount', type: 'num', min: 0, max: 1.5 },
     { key: 'nsc', path: 'field.noiseScale', type: 'num', min: 0.5, max: 12 },
     { key: 'noc', path: 'field.noiseOctaves', type: 'int', min: 1, max: 8 },
+    { key: 'da', path: 'field.detailAmount', type: 'num', min: 0, max: 0.3 },
+    { key: 'dsc', path: 'field.detailScale', type: 'num', min: 5, max: 60 },
     { key: 'sd', path: 'field.seed', type: 'int', min: 0, max: 99999 },
     { key: 'ef', path: 'field.edgeFalloff', type: 'num', min: 0.01, max: 1 },
     { key: 'msk', path: 'field.maskShape', type: 'str' },

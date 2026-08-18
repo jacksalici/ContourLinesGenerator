@@ -24,6 +24,8 @@ export function createDefaultState() {
             noiseAmount: 0.35,
             noiseScale: 2.5,
             noiseOctaves: 5,
+            detailAmount: 0.04,
+            detailScale: 18,
             seed: 7,
             edgeFalloff: 0.45,
             maskShape: 'radial',
@@ -130,6 +132,8 @@ export function randomizeConfig(state, random) {
     state.field.noiseAmount = range(0.15, 0.6);
     state.field.noiseScale = range(1.5, 5);
     state.field.noiseOctaves = Math.round(range(3, 6));
+    state.field.detailAmount = range(0.02, 0.07);
+    state.field.detailScale = range(10, 30);
 
     state.contours.count = Math.round(range(12, 45));
     state.contours.smoothing = Math.round(range(2, 4));

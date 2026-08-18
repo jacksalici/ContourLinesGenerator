@@ -105,6 +105,8 @@ export const SCHEMA = [
             { type: 'range', path: 'field.noiseAmount', label: 'Amount', min: 0, max: 1.5, step: 0.01 },
             { type: 'range', path: 'field.noiseScale', label: 'Scale', min: 0.5, max: 12, step: 0.1 },
             { type: 'range', path: 'field.noiseOctaves', label: 'Octaves', min: 1, max: 8, step: 1 },
+            { type: 'range', path: 'field.detailAmount', label: 'Detail amount', min: 0, max: 0.3, step: 0.005 },
+            { type: 'range', path: 'field.detailScale', label: 'Detail scale', min: 5, max: 60, step: 0.5 },
             { type: 'number', path: 'field.seed', label: 'Seed', min: 0, max: 99999, step: 1 },
         ],
     },

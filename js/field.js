@@ -144,6 +144,8 @@ export function buildField(points, options) {
         noiseAmount = 0,
         noiseScale = 3,
         noiseOctaves = 4,
+        detailAmount = 0,
+        detailScale = 18,
         seed = 1,
         edgeFalloff = 0,
         maskShape = 'radial',
@@ -179,6 +181,19 @@ export function buildField(points, options) {
                     frequency: noiseScale,
                     octaves: noiseOctaves,
                     seed,
+                });
+            }
+
+            // A second, much finer and much weaker layer. Its wavelength is
+            // shorter than the spacing between contours, so it wobbles the
+            // lines — the hand-drawn, eroded look — without moving the peaks
+            // and basins the first noise layer shapes.
+            if (detailAmount > 0) {
+                h += detailAmount * fbm(px, py, {
+                    frequency: detailScale,
+                    octaves: 2,
+                    gain: 0.4,
+                    seed: seed + 7919,
                 });
             }
 

@@ -33,11 +33,18 @@ Contour lines are [level sets](https://en.wikipedia.org/wiki/Level_set) of a con
     - *Additive
    bumps* sums the gaussians, so overlapping points build ridges. It's the most terrain-like of the three;
     - *inverse distance* and *gaussian blend* average instead, so the field never exceeds the highest control
-   point. Optional [fBm noise](https://en.wikipedia.org/wiki/Fractional_Brownian_motion) roughens the
-   surface, and a [smoothstep](https://en.wikipedia.org/wiki/Smoothstep) border mask fades it to zero near
+   point. Two optional layers of [fBm noise](https://en.wikipedia.org/wiki/Fractional_Brownian_motion)
+   roughen the surface, and a [smoothstep](https://en.wikipedia.org/wiki/Smoothstep) border mask fades it to zero near
    the frame so contours close into islands instead of being clipped: `radial` gives an oval landmass,
    `frame` gives rings parallel to the border, `none` lets lines run off the edge. The result is rescaled
    to `[0,1]`.
+    - The **noise** layer (*amount*, *scale*, *octaves*) works at the scale of the terrain itself: it moves
+   peaks and basins around and decides where the contours go.
+    - The **detail** layer (*detail amount*, *detail scale*) is a second fBm, weaker and much finer, with its
+   own seed offset. Its wavelength is shorter than the spacing between contour levels, so it perturbs the
+   lines (the eroded, hand-drawn wobble) without displacing the shapes the first layer builds. It is
+   applied before the border mask, so it fades out at the frame along with everything else. Detail scale is
+   bounded by the grid: past roughly `resolution / 8` it aliases into blocky wobble instead of getting finer.
 3. **Marching squares**: [the algorithm](https://en.wikipedia.org/wiki/Marching_squares) classifies each
    cell's four corners as above or below the level; the 16 possible configurations say which cell edges
    the contour crosses, and
@@ -90,7 +97,7 @@ A control can bind to a state `path`, or to an explicit `get`/`set` pair when th
 location — that is how the selected-point sliders reach whichever point is currently selected. Groups and
 individual controls both accept a `visible(state)` predicate.
 
-# Favicon
+## Favicon
 
 The favicon of the website has been generated with the following configuration:
 ```

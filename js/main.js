@@ -130,6 +130,11 @@ const actions = {
             s.ui.selectedId = null;
         });
     },
+    // The hint is otherwise driven purely by the orientation media query, so
+    // dismissing it is a one-way class for this page load.
+    'dismiss-rotate': () => {
+        document.getElementById('rotate-hint').classList.add('dismissed');
+    },
     'zoom-in': () => store.update((s) => zoomCentre(s.view, 1.25, s.canvas)),
     'zoom-out': () => store.update((s) => zoomCentre(s.view, 1 / 1.25, s.canvas)),
     'zoom-reset': () => store.update((s) => resetView(s.view)),

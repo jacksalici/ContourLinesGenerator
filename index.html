@@ -117,6 +117,63 @@ svg {
     cursor: crosshair;
 }
 
+/*
+ * On a touch device the canvas is the whole point: give it the height of the
+ * screen and let it scale down to fit, rather than the fixed pixel size the
+ * export uses.
+ */
+@media (pointer: coarse) {
+    #main {
+        box-sizing: border-box;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    #main svg {
+        width: auto;
+        height: auto;
+        max-width: 100%;
+        max-height: calc(100dvh - 60px);
+    }
+}
+
+/*
+ * Portrait phones get a nudge to rotate: the canvas is square-to-wide and
+ * landscape is the only way it fills the screen. Driven by the media query
+ * alone, so rotating the device dismisses it.
+ */
+#rotate-hint {
+    display: none;
+}
+
+@media (pointer: coarse) and (orientation: portrait) and (max-width: 900px) {
+    #rotate-hint:not(.dismissed) {
+        display: flex;
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.55);
+        padding: 24px;
+    }
+}
+
+#rotate-hint > div {
+    background: #fff;
+    border-radius: 8px;
+    padding: 18px;
+    max-width: 320px;
+    text-align: center;
+}
+
+#rotate-hint svg {
+    border: none;
+    cursor: default;
+}
+
 /* Stack the sidebar above the canvas on narrow screens. */
 @media (max-width: 700px) {
     body {
@@ -182,12 +239,27 @@ svg {
     <p>
         Click empty canvas to add a point. Click a point to select it, drag to move it.<br>
         Shift+drag or scroll over a point changes its height. Alt+click or right click deletes it.<br>
-        Scroll to zoom, drag empty canvas to pan.
+        Scroll to zoom, drag empty canvas to pan.<br>
+        On touch screens: one finger pans, two fingers pinch to zoom, and a tap selects the nearest point.
+        Edit or delete the selected point from the panel above — touch never moves, adds or deletes directly.
     </p>
 
     <hr>
 
     <p> &copy; <a href="https://jacksalici.com">Jack Salici</a> 2026. </p>
+</div>
+
+<div id="rotate-hint">
+    <div>
+        <svg viewBox="0 0 48 48" width="48" height="48" aria-hidden="true">
+            <rect x="15" y="4" width="18" height="30" rx="3" fill="none" stroke="#333" stroke-width="2"/>
+            <path d="M8 38a20 20 0 0 0 32 0" fill="none" stroke="#333" stroke-width="2"/>
+            <path d="M40 30v8h-8" fill="none" stroke="#333" stroke-width="2"/>
+        </svg>
+        <p><strong>Turn your device sideways.</strong></p>
+        <p>The drawing is wider than it is tall, so landscape gives it the whole screen. Editing control points needs a mouse or a trackpad.</p>
+        <button data-action="dismiss-rotate">Got it</button>
+    </div>
 </div>
 
 <div id="main">

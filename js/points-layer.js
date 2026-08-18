@@ -7,6 +7,8 @@
  * empty space adds a point.
  * Handles: click selects, drag moves, Shift+drag or wheel changes height,
  * Alt+click or right click deletes.
+ * Touch: one finger pans, two fingers pinch to zoom, a tap selects the nearest
+ * point (or clears the selection).
  */
 
 import { createPoint } from './state.js';
@@ -14,10 +16,21 @@ import { toCanvasPoint, zoomAt } from './viewport.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const DRAG_THRESHOLD = 4; // px of movement before a click becomes a pan
+const TAP_RADIUS = 26; // screen px a tap may miss a point by and still select it
 const ACCENT = '#b06a00';
 
 function clamp01(v) {
     return Math.min(1, Math.max(0, v));
+}
+
+/**
+ * A fingertip covers far more than a handle, so on touch a drag would be a
+ * mis-grab and a tap on empty canvas an accidental point: touch may select a
+ * point and pan the canvas, nothing more. Moving, adding and deleting are done
+ * with a mouse, or from the sliders and the delete button in the panel.
+ */
+function isTouch(event) {
+    return event.pointerType === 'touch';
 }
 
 export class PointsLayer {
@@ -30,6 +43,9 @@ export class PointsLayer {
         this.store = store;
         this.drag = null;
         this.pan = null;
+        this.pointers = new Map(); // live pointers, for pinch detection
+        this.pinch = null;
+        this.pinched = false; // a pinch happened, so the release is not a tap
 
         this.group = document.createElementNS(SVG_NS, 'g');
         this.group.setAttribute('id', 'control-points');
@@ -51,6 +67,70 @@ export class PointsLayer {
         const rect = this.svg.getBoundingClientRect();
         if (rect.width === 0) return 1;
         return canvas.width / view.scale / rect.width;
+    }
+
+    /**
+     * The control point nearest to a normalised position, within `radius`
+     * canvas units, or null.
+     *
+     * Touch selection goes through this instead of hit-testing the handle,
+     * which is only a few screen pixels wide once a 900px canvas is scaled to
+     * fit a phone — far too small to land a finger on.
+     */
+    _pointNear(pos, radius) {
+        const { canvas, points } = this.store.state;
+        let best = null;
+        let bestDistance = radius;
+
+        for (const point of points) {
+            const distance = Math.hypot(
+                (point.x - pos.x) * canvas.width,
+                (point.y - pos.y) * canvas.height,
+            );
+
+            if (distance <= bestDistance) {
+                bestDistance = distance;
+                best = point;
+            }
+        }
+
+        return best;
+    }
+
+    /** Two fingers down: remember the span and midpoint the gesture starts from. */
+    _beginPinch() {
+        const [a, b] = [...this.pointers.values()];
+
+        this.drag = null;
+        this.pan = null;
+        this.pinched = true;
+        this.pinch = {
+            distance: Math.hypot(a.x - b.x, a.y - b.y),
+            mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+        };
+    }
+
+    /** Apply a pinch: the span scales the zoom, the midpoint drags the canvas. */
+    _pinchTo() {
+        const [a, b] = [...this.pointers.values()];
+        const distance = Math.hypot(a.x - b.x, a.y - b.y);
+        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+
+        if (distance === 0 || this.pinch.distance === 0) return;
+
+        const factor = distance / this.pinch.distance;
+        const anchor = toCanvasPoint(this.svg, { clientX: mid.x, clientY: mid.y });
+        const units = this._unitsPerPixel();
+        const dx = mid.x - this.pinch.mid.x;
+        const dy = mid.y - this.pinch.mid.y;
+
+        this.pinch = { distance, mid };
+
+        this.store.update((s) => {
+            zoomAt(s.view, factor, anchor.x, anchor.y);
+            s.view.x -= dx * units;
+            s.view.y -= dy * units;
+        });
     }
 
     _bindCanvas() {
@@ -81,10 +161,21 @@ export class PointsLayer {
         this.svg.addEventListener('pointerdown', (event) => {
             if (event.button !== 0) return;
 
+            this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+            if (this.pointers.size === 2) {
+                this._beginPinch();
+                return;
+            }
+
+            if (this.pointers.size > 2) return;
+
             const handle = event.target.closest('[data-point-id]');
             this.svg.setPointerCapture(event.pointerId);
 
-            if (!handle) {
+            // Touch never grabs a handle: it pans, and a release that did not
+            // move is treated as a tap.
+            if (!handle || isTouch(event)) {
                 this.pan = { x: event.clientX, y: event.clientY, moved: false };
                 return;
             }
@@ -110,6 +201,15 @@ export class PointsLayer {
         });
 
         this.svg.addEventListener('pointermove', (event) => {
+            if (this.pointers.has(event.pointerId)) {
+                this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            }
+
+            if (this.pinch) {
+                if (this.pointers.size >= 2) this._pinchTo();
+                return;
+            }
+
             if (this.drag) {
                 this._dragTo(event);
                 return;
@@ -134,6 +234,18 @@ export class PointsLayer {
         });
 
         this.svg.addEventListener('pointerup', (event) => {
+            this.pointers.delete(event.pointerId);
+
+            if (this.pinch) {
+                // Lifting one finger ends the pinch; the other is left alone
+                // rather than becoming a pan halfway through the gesture.
+                if (this.pointers.size < 2) this.pinch = null;
+                return;
+            }
+
+            const pinched = this.pinched;
+            if (this.pointers.size === 0) this.pinched = false;
+
             if (this.drag) {
                 this.drag = null;
                 return;
@@ -144,8 +256,20 @@ export class PointsLayer {
             const { moved } = this.pan;
             this.pan = null;
 
-            if (moved) return; // that was a pan, not a click
+            if (moved || pinched) return; // that was a pan or a pinch, not a click
             if (!this.store.state.ui.showPoints) return;
+
+            if (isTouch(event)) {
+                // A tap selects the nearest point within a fingertip's reach,
+                // and otherwise clears the selection. It never adds one.
+                const near = this._pointNear(
+                    this._normalized(event),
+                    TAP_RADIUS * this._unitsPerPixel(),
+                );
+
+                this.store.update((s) => { s.ui.selectedId = near ? near.id : null; });
+                return;
+            }
 
             const { x, y } = this._normalized(event);
             this.store.update((s) => {
@@ -155,7 +279,10 @@ export class PointsLayer {
             });
         });
 
-        this.svg.addEventListener('pointercancel', () => {
+        this.svg.addEventListener('pointercancel', (event) => {
+            this.pointers.delete(event.pointerId);
+            if (this.pointers.size < 2) this.pinch = null;
+            if (this.pointers.size === 0) this.pinched = false;
             this.pan = null;
             this.drag = null;
         });
